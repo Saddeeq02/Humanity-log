@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import './AuthLogin.css';
+import { API_URL } from '../services/api';
 
 const AuthLogin = () => {
     const [email, setEmail] = useState('');
@@ -18,7 +19,7 @@ const AuthLogin = () => {
             formData.append('username', email); // OAuth2 expects 'username'
             formData.append('password', password);
 
-            const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+            const response = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -42,7 +43,7 @@ const AuthLogin = () => {
                 setError(data.detail || `Server Error (${response.status}): The authentication service is experiencing issues.`);
             }
         } catch (err) {
-            setError("Connection Refused: Ensure the backend is running at http://localhost:8000");
+            setError(`Connection Refused: Ensure the backend is reachable at ${API_URL}`);
         } finally {
             setLoading(false);
         }

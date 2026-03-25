@@ -5,7 +5,6 @@ class DistributionNotifier extends StateNotifier<List<DistributionLog>> {
   DistributionNotifier() : super([]);
 
   Future<void> addDistribution(DistributionLog log) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     state = [...state, log];
   }
 

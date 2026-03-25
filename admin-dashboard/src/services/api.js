@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Connect to the local FastAPI backend running on port 8000
-const API_URL = import.meta.env.VITE_API_URL || 'https://humanity-log.onrender.com/api/v1';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://humanity-log.onrender.com/api/v1';
 
 export const apiClient = axios.create({
     baseURL: API_URL,

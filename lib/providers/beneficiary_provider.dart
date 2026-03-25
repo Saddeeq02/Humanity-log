@@ -5,9 +5,11 @@ class BeneficiaryNotifier extends StateNotifier<List<Beneficiary>> {
   BeneficiaryNotifier() : super([]);
 
   Future<void> addBeneficiary(Beneficiary beneficiary) async {
-    // Simulate DB save delay
-    await Future.delayed(const Duration(milliseconds: 300));
     state = [...state, beneficiary];
+  }
+
+  Future<void> setBeneficiaries(List<Beneficiary> beneficiaries) async {
+    state = beneficiaries;
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/auth_user.dart';
 import 'api_service_provider.dart';
+import 'sync_provider.dart';
 
 class AuthState {
   final AuthUser? user;
@@ -37,6 +38,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       
       state = state.copyWith(user: user, isLoading: false);
+      
+      // Trigger initial sync after login
+      ref.read(networkProvider.notifier).initialSync();
+      
       return true;
     } catch (e) {
       state = state.copyWith(
