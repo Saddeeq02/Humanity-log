@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+alembic
+asyncpg
+pydantic
+python-jose
+passlib
+httpx
+aiosqlite
+PyJWT
+python-multipart

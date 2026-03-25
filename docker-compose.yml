@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    container_name: shas-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/shas_db
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  admin-dashboard:
+    build:
+      context: ./admin-dashboard
+    container_name: shas-admin-dashboard
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./admin-dashboard:/app
+      - /app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

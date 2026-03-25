@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      # This passes the database connection string directly into your app.
+      # Notice it connects to 'db' (the service name below), not 'localhost'.
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/shas_db
+    volumes:
+      # This syncs your local code to the container so you don't have to 
+      # rebuild the image every time you make a change.
+      - .:/app
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
