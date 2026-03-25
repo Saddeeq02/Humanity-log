@@ -37,7 +37,12 @@ export const DiscrepancyService = {
 
 export const DashboardService = {
     getMetrics: () => apiClient.get('/dashboard/metrics'),
-    getActivity: () => apiClient.get('/dashboard/activity'),
+    getActivity: () => apiClient.get('/sync/activity'), // Changed to use focused distribution activity
+};
+
+export const SyncService = {
+    getActivity: () => apiClient.get('/sync/activity'),
+    push: (payload) => apiClient.post('/sync/push', payload),
 };
 
 export const UserService = {

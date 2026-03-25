@@ -26,8 +26,15 @@ class DiscrepancyLog(Base):
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     assignment_id = Column(String, ForeignKey("assignments.id"), nullable=False)
-    item_id = Column(String, ForeignKey("inventory_items.id"), nullable=False)
-    expected_qty = Column(Integer, nullable=False)
-    actual_qty = Column(Integer, nullable=False)
-    reason = Column(String, nullable=True)
+    item_id = Column(String, ForeignKey("inventory_items.id"), nullable=True) # Optional for location mismatches
+    
+    reported_by = Column(String, ForeignKey("users.id"), nullable=True)
+    discrepancy_type = Column(String, nullable=False) # "Stock Mismatch", "Location Mismatch"
+    
+    expected_value = Column(String, nullable=True)
+    actual_value = Column(String, nullable=True)
+    
+    resolution_status = Column(String, default="pending") # "pending", "resolved", "dismissed"
+    notes = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
     

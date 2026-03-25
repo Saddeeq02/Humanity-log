@@ -143,8 +143,7 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
   }
 
   Future<void> _handleConfirm() async {
-    if (_capturedImage == null || _currentPosition == null || !_isFormValid) return;
-
+    final currentInventory = ref.read(inventoryProvider);
     String locationString = '${_currentPosition!.latitude}, ${_currentPosition!.longitude}';
 
     final finalizedBeneficiary = Beneficiary.create(
@@ -156,6 +155,7 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     );
 
     final newLog = DistributionLog.create(
+      assignmentId: currentInventory.assignmentId, 
       beneficiaryId: finalizedBeneficiary.id, 
       aidType: _aidType,
       photoPath: _capturedImage!.path,

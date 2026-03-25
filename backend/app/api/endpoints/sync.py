@@ -133,6 +133,50 @@ async def sync_push(payload: SyncPushPayload, db: AsyncSession = Depends(get_db)
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/activity")
+async def get_activity_feed(db: AsyncSession = Depends(get_db)):
+    """
+    Returns the most recent distribution activities across the whole system.
+    Joins with Beneficiaries and Agents for a rich activity feed.
+    """
+    from sqlalchemy.orm import joinedload
+    from app.models.user import User
+    
+    # Fetch top 20 recent distributions
+    query = (
+        select(DistributionLog)
+        .options(joinedload(DistributionLog.beneficiary))
+        .order_by(DistributionLog.timestamp.desc())
+        .limit(20)
+    )
+    
+    result = await db.execute(query)
+    logs = result.scalars().all()
+    
+    formatted_activities = []
+    for log in logs:
+        # Get agent name separately if needed or just use ID
+        agent_name = "Field Agent"
+        if log.agent_id:
+            agent = await db.get(User, log.agent_id)
+            if agent:
+                agent_name = agent.name
+
+        formatted_activities.append({
+            "id": log.id,
+            "agent_name": agent_name,
+            "beneficiary_name": log.beneficiary.name if log.beneficiary else "Unknown",
+            "action": f"Distributed Aid to {log.beneficiary.name if log.beneficiary else 'Beneficiary'}",
+            "location": log.location_coordinate,
+            "timestamp": log.timestamp.isoformat(),
+            "status": "Verified" # Default, or check DiscrepancyLog
+        })
+        
+    return {
+        "status": "success",
+        "data": formatted_activities
+    }
+
 @router.get("/pull")
 async def pull_assignments(agent_id: str, db: AsyncSession = Depends(get_db)):
     """

@@ -130,14 +130,24 @@ const DashboardOverview = () => {
                             <div className="feed-list">
                                 {activities.length === 0 ? (
                                     <p style={{ color: 'var(--text-300)', textAlign: 'center', marginTop: '2rem' }}>
-                                        No recent activity yet.
+                                        No recent distribution activity yet.
                                     </p>
                                 ) : activities.map((item) => (
                                     <div key={item.id} className="feed-item">
-                                        <div className="feed-avatar">{item.action.charAt(0)}</div>
+                                        <div className={`feed-avatar ${item.status === 'Flagged' ? 'warning' : ''}`}>
+                                            {item.agent_name.charAt(0)}
+                                        </div>
                                         <div className="feed-info">
-                                            <p className="feed-action">{item.action}</p>
-                                            <p className="feed-meta">Table: {item.table_name} • {new Date(item.timestamp).toLocaleString()}</p>
+                                            <p className="feed-action">
+                                                <span className="font-bold">{item.agent_name}</span>: {item.action}
+                                            </p>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
+                                                <p className="feed-meta">{new Date(item.timestamp).toLocaleTimeString()}</p>
+                                                <span className={`status-pill ${item.status.toLowerCase()}`}>
+                                                    {item.status === 'Verified' ? <CheckCircle size={10} style={{ marginRight: '4px' }} /> : <AlertTriangle size={10} style={{ marginRight: '4px' }} />}
+                                                    {item.status}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

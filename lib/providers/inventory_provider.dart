@@ -3,25 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum InventoryStatus { pending, accepted, short, over }
 
 class DailyInventory {
+  final String? assignmentId; // Added to track current mission
   final int assignedAid;
   final int? receivedAid;
   final int returnedAid;
   final InventoryStatus status;
 
   DailyInventory({
-    this.assignedAid = 0, // Now dynamic from backend
+    this.assignmentId,
+    this.assignedAid = 0,
     this.receivedAid,
     this.returnedAid = 0,
     this.status = InventoryStatus.pending,
   });
 
   DailyInventory copyWith({
+    String? assignmentId,
     int? assignedAid,
     int? receivedAid,
     int? returnedAid,
     InventoryStatus? status,
   }) {
     return DailyInventory(
+      assignmentId: assignmentId ?? this.assignmentId,
       assignedAid: assignedAid ?? this.assignedAid,
       receivedAid: receivedAid ?? this.receivedAid,
       returnedAid: returnedAid ?? this.returnedAid,
@@ -33,8 +37,8 @@ class DailyInventory {
 class InventoryNotifier extends StateNotifier<DailyInventory> {
   InventoryNotifier() : super(DailyInventory());
 
-  void updateFromAssignment(int totalAllocated) {
-    state = state.copyWith(assignedAid: totalAllocated);
+  void updateFromAssignment(String id, int totalAllocated) {
+    state = state.copyWith(assignmentId: id, assignedAid: totalAllocated);
   }
 
   void acceptAll() {

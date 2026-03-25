@@ -34,7 +34,7 @@ class ApiService {
       'agent_id': agentId,
       'logs': logs.map((l) => {
         'id': l.id,
-        'assignment_id': null, // client may not know assignment id yet
+        'assignment_id': l.assignmentId, 
         'beneficiary_id': l.beneficiaryId,
         'agent_id': agentId,
         'timestamp': l.timestamp.toIso8601String(),

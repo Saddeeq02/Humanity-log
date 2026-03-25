@@ -50,8 +50,11 @@ class NetworkNotifier extends StateNotifier<bool> {
     try {
       final assignment = await api.getLatestAssignment(userId: userId);
       if (assignment != null) {
+        final id = assignment['id'] as String?;
         final total = assignment['total_assigned_items'] as int? ?? 0;
-        ref.read(inventoryProvider.notifier).updateFromAssignment(total);
+        if (id != null) {
+          ref.read(inventoryProvider.notifier).updateFromAssignment(id, total);
+        }
       }
     } catch (e) {
       print('Assignment fetch error: $e');
