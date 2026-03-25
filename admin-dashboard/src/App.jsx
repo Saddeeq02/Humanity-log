@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import DashboardOverview from './pages/DashboardOverview';
 import AuthLogin from './pages/AuthLogin';
@@ -26,8 +26,8 @@ const App = () => {
   const isAuthenticated = !!localStorage.getItem('shas_token');
 
   // Force redirect to login if not authenticated
-  if (!isAuthenticated && window.location.pathname !== '/login') {
-    window.history.pushState({}, '', '/login');
+  if (!isAuthenticated && window.location.pathname !== '/login' && !window.location.hash.includes('/login')) {
+    window.location.hash = '/login';
   }
 
   return (
