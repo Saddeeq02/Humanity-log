@@ -9,7 +9,7 @@ class DailyInventory {
   final InventoryStatus status;
 
   DailyInventory({
-    this.assignedAid = 100, // Mock NGO Assignment
+    this.assignedAid = 0, // Now dynamic from backend
     this.receivedAid,
     this.returnedAid = 0,
     this.status = InventoryStatus.pending,
@@ -32,6 +32,10 @@ class DailyInventory {
 
 class InventoryNotifier extends StateNotifier<DailyInventory> {
   InventoryNotifier() : super(DailyInventory());
+
+  void updateFromAssignment(int totalAllocated) {
+    state = state.copyWith(assignedAid: totalAllocated);
+  }
 
   void acceptAll() {
     state = state.copyWith(

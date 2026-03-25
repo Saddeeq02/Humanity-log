@@ -32,7 +32,8 @@ async def seed_db():
             email="agent007@humanitylog.org",
             name="James Bond",
             role="agent",
-            hashed_password=agent_pwd
+            hashed_password=agent_pwd,
+            agent_id="AGENT007"
         )
         session.add_all([super_admin, agent])
         

@@ -3,6 +3,7 @@ import 'distribution_provider.dart';
 import 'api_service_provider.dart';
 import 'auth_provider.dart';
 import 'beneficiary_provider.dart';
+import 'inventory_provider.dart';
 
 class NetworkNotifier extends StateNotifier<bool> {
   final Ref ref;
@@ -33,8 +34,27 @@ class NetworkNotifier extends StateNotifier<bool> {
       
       // Always pull fresh data during a sync if online
       await pullBeneficiaries();
+      await fetchAssignment();
     } catch (e) {
       print('Sync error: $e');
+    }
+  }
+
+  Future<void> fetchAssignment() async {
+    final api = ref.read(apiServiceProvider);
+    final auth = ref.read(authProvider);
+    final userId = auth.user?.id;
+    
+    if (userId == null) return;
+
+    try {
+      final assignment = await api.getLatestAssignment(userId: userId);
+      if (assignment != null) {
+        final total = assignment['total_assigned_items'] as int? ?? 0;
+        ref.read(inventoryProvider.notifier).updateFromAssignment(total);
+      }
+    } catch (e) {
+      print('Assignment fetch error: $e');
     }
   }
 

@@ -123,3 +123,40 @@ async def create_assignment(data: AssignmentCreateSchema, db: AsyncSession = Dep
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/user/{user_id}")
+async def get_user_assignment(user_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Returns the latest assignment for a specific Field Agent.
+    Used by the mobile app for Daily Reports and inventory tracking.
+    """
+    query = select(Assignment).where(
+        Assignment.user_id == user_id
+    ).options(
+        selectinload(Assignment.inventory_allocations).selectinload(AssignmentInventory.inventory_item)
+    ).order_by(Assignment.created_at.desc())
+    
+    result = await db.execute(query)
+    assignment = result.scalars().first()
+    
+    if not assignment:
+        return {"status": "success", "data": None}
+        
+    # Sum up all quantities for the simple daily report view
+    total_quantity = sum([item.quantity for item in assignment.inventory_allocations])
+    
+    return {
+        "status": "success",
+        "data": {
+            "id": str(assignment.id),
+            "status": assignment.status,
+            "total_assigned_items": total_quantity,
+            "items": [
+                {
+                    "inventory_id": item.inventory_id,
+                    "name": item.inventory_item.name if item.inventory_item else "Unknown",
+                    "quantity": item.quantity
+                } for item in assignment.inventory_allocations
+            ]
+        }
+    }

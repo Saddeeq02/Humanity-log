@@ -71,7 +71,7 @@ const AuthLogin = () => {
                 <form onSubmit={handleLogin} className="auth-form">
                     {error && <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '1rem', textAlign: 'center', background: 'rgba(239,68,68,0.1)', padding: '0.5rem', borderRadius: '4px' }}>{error}</div>}
                     <div className="input-group">
-                        <label>Provider Email</label>
+                        <label>Agent ID / Email</label>
                         <div className="input-with-icon">
                             <Mail className="input-icon" size={20} />
                             <input

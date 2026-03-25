@@ -175,7 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _agentIdController,
                       style: GoogleFonts.inter(fontSize: 18),
                       decoration: InputDecoration(
-                        labelText: 'Agent ID',
+                        labelText: 'Agent ID / Email',
                         hintText: 'e.g. AGENT_007',
                         prefixIcon: const Icon(Icons.badge, color: AppTheme.primaryTeal),
                         filled: true,

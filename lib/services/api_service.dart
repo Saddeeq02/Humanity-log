@@ -83,4 +83,15 @@ class ApiService {
       throw Exception('Failed to pull beneficiaries: ${response.statusCode}');
     }
   }
+
+  Future<Map<String, dynamic>?> getLatestAssignment({required String userId}) async {
+    final url = Uri.parse('$baseUrl/api/v1/assignments/user/$userId');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data'];
+    } else {
+      throw Exception('Failed to get assignment: ${response.statusCode}');
+    }
+  }
 }

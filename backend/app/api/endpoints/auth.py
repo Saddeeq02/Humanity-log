@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import or_
 from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta
@@ -18,10 +19,15 @@ ALGORITHM = "HS256"
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     """
-    Standard OAuth2 flow: takes username (email) and password.
+    Standard OAuth2 flow: takes username (email or agent_id) and password.
     Returns access token with injected Role for frontend RBAC routing.
     """
-    query = select(User).where(User.email == form_data.username)
+    query = select(User).where(
+        or_(
+            User.email == form_data.username,
+            User.agent_id == form_data.username
+        )
+    )
     result = await db.execute(query)
     user = result.scalars().first()
 

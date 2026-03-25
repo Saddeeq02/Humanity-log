@@ -21,6 +21,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="agent") # 'superadmin', 'admin', 'agent'
+    agent_id = Column(String, unique=True, index=True, nullable=True) # For field agent login
     device_id = Column(String, nullable=True)
     
     organization = relationship("Organization", back_populates="users")
