@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, Plus, MoreVertical, X, Loader2, MapPin, PackagePlus, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, X, Loader2, MapPin, PackagePlus, Trash2, CheckCircle, AlertTriangle, ShieldAlert, Play } from 'lucide-react';
 import { AssignmentService, UserService, InventoryService } from '../services/api';
 import './Assignments.css';
 
@@ -346,6 +346,18 @@ const Assignments = () => {
         }
     };
 
+    const handleSuspendAssignment = async (id) => {
+        try {
+            const res = await AssignmentService.suspend(id);
+            if (res.data.status === 'success') {
+                fetchAssignments();
+            }
+        } catch (error) {
+            console.error("Suspend failed", error);
+            alert("Failed to update status.");
+        }
+    };
+
     const handleReviewMission = async (id) => {
         try {
             const res = await AssignmentService.getReport(id);
@@ -469,7 +481,7 @@ const Assignments = () => {
                                             </span>
                                         </td>
                                         <td>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                 {asn.status === 'reconciling' ? (
                                                     <button
                                                         className="btn btn-primary btn-sm"
@@ -479,23 +491,41 @@ const Assignments = () => {
                                                         Review & Close
                                                     </button>
                                                 ) : (
-                                                    <button
-                                                        className="action-btn"
-                                                        onClick={() => {
-                                                            if (window.confirm('Are you sure you want to delete this assignment?')) {
-                                                                handleDeleteAssignment(asn.id);
+                                                    <>
+                                                        <button 
+                                                            className="action-btn" 
+                                                            onClick={() => handleSuspendAssignment(asn.id)}
+                                                            title={asn.status === 'suspended' ? "Reactivate Mission" : "Suspend Mission"}
+                                                        >
+                                                            {asn.status === 'suspended' ? 
+                                                                <Play size={16} color="var(--status-success)" /> : 
+                                                                <ShieldAlert size={16} color="var(--warning)" />
                                                             }
-                                                        }}
-                                                    >
-                                                        <Trash2 size={16} color="var(--status-error)" />
-                                                    </button>
+                                                        </button>
+                                                        <button
+                                                            className="action-btn"
+                                                            onClick={() => {
+                                                                if (window.confirm('Are you sure you want to delete this assignment? All track logs will be removed.')) {
+                                                                    handleDeleteAssignment(asn.id);
+                                                                }
+                                                            }}
+                                                            title="Delete Assignment"
+                                                        >
+                                                            <Trash2 size={16} color="var(--status-error)" />
+                                                        </button>
+                                                    </>
                                                 )}
-                                                <button className="action-btn" onClick={() => { setEditingAssignment(asn); setIsModalOpen(true); }}>
+                                                <button 
+                                                    className="action-btn" 
+                                                    onClick={() => { setEditingAssignment(asn); setIsModalOpen(true); }}
+                                                    title="Edit Mission Parameters"
+                                                >
                                                     <MoreVertical size={18} />
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
+                                // End of row
                                 ))
                             )}
                         </tbody>
@@ -509,11 +539,11 @@ const Assignments = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             className="modal-content"
-                            style={{ maxWidth: '700px', width: '90%' }}
+                            style={{ maxWidth: '750px', width: '90%' }}
                         >
                             <div className="modal-header">
                                 <div>
-                                    <h2 className="modal-title">Mission Review & Closure</h2>
+                                    <h2 className="modal-title">Mission Intelligence Review</h2>
                                     <p className="modal-subtitle">Assignment ID: {currentReport.id.split('-')[0]}...</p>
                                 </div>
                                 <button className="close-btn" onClick={() => setReviewModalOpen(false)}><X size={24} /></button>
@@ -522,31 +552,77 @@ const Assignments = () => {
                             <div className="modal-body">
                                 <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                                     <div className="metric-card-lite">
-                                        <span className="metric-label">Beneficiaries</span>
+                                        <span className="metric-label">Beneficiaries Capture</span>
                                         <span className="metric-value-small">{currentReport.beneficiary_count}</span>
                                     </div>
                                     <div className="metric-card-lite">
-                                        <span className="metric-label">Location Flags</span>
+                                        <span className="metric-label">GPS Discrepancies</span>
                                         <span className="metric-value-small" style={{ color: currentReport.flags > 0 ? 'var(--status-error)' : 'var(--status-success)' }}>
                                             {currentReport.flags}
                                         </span>
                                     </div>
                                     <div className="metric-card-lite">
-                                        <span className="metric-label">Status</span>
+                                        <span className="metric-label">Operations Status</span>
                                         <span className={`status-badge ${currentReport.status.toLowerCase()}`}>
                                             {currentReport.status}
                                         </span>
                                     </div>
                                 </div>
 
-                                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-100)' }}>Inventory Reconciliation</h3>
+                                {/* System Audit Intelligence Banner */}
+                                <div className="audit-intelligence-banner" style={{ 
+                                    background: 'rgba(255, 255, 255, 0.03)', 
+                                    border: '1px solid var(--border-light)', 
+                                    borderRadius: '16px', 
+                                    padding: '1.25rem', 
+                                    marginBottom: '1.5rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1.25rem'
+                                }}>
+                                    <div className={`audit-bar ${(currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) ? 'good' : 'flagged'}`} style={{
+                                        width: '8px',
+                                        height: '60px',
+                                        borderRadius: '4px',
+                                        background: (currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) ? 'var(--status-success)' : 'var(--status-error)'
+                                    }}></div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                            <ShieldAlert size={18} color={(currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) ? 'var(--status-success)' : 'var(--status-error)'} />
+                                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700' }}>
+                                                {(currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) ? 'AUDIT VERIFIED: MISSION INTEGRITY SECURE' : 'AUDIT ALERT: DISCREPANCIES DETECTED'}
+                                            </h4>
+                                        </div>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-300)', margin: 0 }}>
+                                            {(currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) 
+                                                ? 'System audit confirms 100% GPS compliance and perfect physical-to-digital inventory reconciliation.' 
+                                                : `Discrepancy: ${currentReport.flags > 0 ? `${currentReport.flags} Location Mismatch(es).` : ''} ${currentReport.inventory.some(inv => (inv.assigned - (inv.distributed + inv.returned)) !== 0) ? 'Physical Warehouse Variance detected.' : ''}`}
+                                        </p>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <span style={{ 
+                                            display: 'block', 
+                                            fontSize: '1.25rem', 
+                                            fontWeight: '800', 
+                                            color: (currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) ? 'var(--status-success)' : 'var(--status-error)' 
+                                        }}>
+                                            {(currentReport.flags === 0 && currentReport.inventory.every(inv => inv.distributed === currentReport.beneficiary_count && (inv.assigned - (inv.distributed + inv.returned) === 0))) ? 'PASS' : 'FAIL'}
+                                        </span>
+                                        <span style={{ fontSize: '0.6rem', color: 'var(--text-300)', letterSpacing: '1px' }}>SYSTEM RECON SCORE</span>
+                                    </div>
+                                </div>
+
+                                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-100)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <PackagePlus size={18} /> Physical & Digital Reconciliation (Variance Check)
+                                </h3>
                                 <table className="data-table" style={{ marginBottom: '1.5rem' }}>
                                     <thead>
                                         <tr>
-                                            <th>Item Name</th>
-                                            <th>Assigned</th>
-                                            <th>Distributed</th>
-                                            <th>Returned</th>
+                                            <th>Aid Resource</th>
+                                            <th title="Quantity Assigned to Mission">Assigned</th>
+                                            <th title="Total Distributed (App Capture)">Distributed</th>
+                                            <th title="Total Returned (Physical Log)">Returned</th>
+                                            <th title="Assigned - (Distributed + Returned)">Variance</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -556,25 +632,44 @@ const Assignments = () => {
                                                 <td>{inv.assigned}</td>
                                                 <td style={{ color: 'var(--primary-500)', fontWeight: 'bold' }}>{inv.distributed}</td>
                                                 <td style={{ color: 'var(--accent-terracotta)', fontWeight: 'bold' }}>{inv.returned}</td>
+                                                <td>
+                                                    <span style={{ 
+                                                        fontWeight: '800', 
+                                                        color: (inv.assigned - (inv.distributed + inv.returned)) === 0 ? 'var(--status-success)' : 'var(--status-error)' 
+                                                    }}>
+                                                        {(inv.assigned - (inv.distributed + inv.returned)) === 0 ? '0 (OK)' : (inv.assigned - (inv.distributed + inv.returned))}
+                                                    </span>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
 
-                                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-100)' }}>Beneficiary Verification</h3>
-                                <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: '8px', padding: '1rem' }}>
+                                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-100)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Search size={18} /> Field Evidence: Captured Data Feed
+                                </h3>
+                                <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '0.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                     {currentReport.beneficiaries.length === 0 ? (
-                                        <p style={{ textAlign: 'center', color: 'var(--text-300)' }}>No distributions recorded.</p>
+                                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-300)' }}>
+                                            <AlertTriangle size={32} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                                            <p>No field logs synchronized for this assignment.</p>
+                                        </div>
                                     ) : (
                                         currentReport.beneficiaries.map((b, idx) => (
-                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                            <div key={idx} style={{ 
+                                                display: 'flex', 
+                                                justifyContent: 'space-between', 
+                                                padding: '12px 1rem', 
+                                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
+                                            }}>
                                                 <div>
-                                                    <p className="font-bold" style={{ fontSize: '0.9rem' }}>{b.name}</p>
-                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-300)' }}>{new Date(b.timestamp).toLocaleString()}</p>
+                                                    <p className="font-bold" style={{ fontSize: '0.9rem', marginBottom: '2px' }}>{b.name}</p>
+                                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-300)' }}>Timestamp: {new Date(b.timestamp).toLocaleString()}</p>
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <span className="status-pill verified" style={{ fontSize: '0.7rem' }}>Verified GPS</span>
-                                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-300)' }}>{b.location}</p>
+                                                    <span className="status-pill verified" style={{ fontSize: '0.65rem', marginBottom: '4px', display: 'inline-block' }}>GPS SECURED</span>
+                                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-300)', fontFamily: 'monospace' }}>COORD: {b.location}</p>
                                                 </div>
                                             </div>
                                         ))
@@ -585,7 +680,7 @@ const Assignments = () => {
                             <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: '12px' }}>
                                 <button className="btn btn-glass" onClick={() => setReviewModalOpen(false)}>Cancel Review</button>
                                 <button className="btn btn-primary" onClick={() => handleCompleteMission(currentReport.id)}>
-                                    Confirm Reconciliation & Close Mission
+                                    Finalize Audit & Close Mission
                                 </button>
                             </div>
                         </motion.div>
@@ -594,7 +689,7 @@ const Assignments = () => {
 
                 {!loading && (
                     <div className="table-footer">
-                        <span>Showing {filteredAssignments.length} entries</span>
+                        <span>Showing {filteredAssignments.length} tracks</span>
                         <div className="pagination">
                             <button className="btn btn-glass btn-sm" disabled>Previous</button>
                             <button className="btn btn-primary btn-sm">1</button>

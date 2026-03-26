@@ -311,3 +311,25 @@ async def reconcile_assignment(id: str, data: ReconciliationSchema, db: AsyncSes
     await db.commit()
     
     return {"status": "success", "message": "Mission reconciliation submitted for review."}
+@router.put("/{id}/suspend")
+async def suspend_assignment(id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Toggles assignment between its current status and 'suspended'.
+    """
+    assignment = await db.get(Assignment, id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+        
+    if assignment.status == "suspended":
+        assignment.status = "active" # Re-activate
+    else:
+        assignment.status = "suspended"
+        
+    await db.commit()
+    await db.refresh(assignment)
+    
+    return {
+        "status": "success", 
+        "message": f"Assignment is now {assignment.status}",
+        "data": {"status": assignment.status}
+    }

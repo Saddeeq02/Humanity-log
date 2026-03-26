@@ -32,6 +32,7 @@ export const AssignmentService = {
     delete: (id) => apiClient.delete(`/assignments/${id}`),
     getReport: (id) => apiClient.get(`/assignments/${id}/report`),
     complete: (id) => apiClient.post(`/assignments/${id}/complete`),
+    suspend: (id) => apiClient.put(`/assignments/${id}/suspend`),
 };
 
 export const DiscrepancyService = {
