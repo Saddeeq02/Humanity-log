@@ -35,6 +35,11 @@ export const AssignmentService = {
     suspend: (id) => apiClient.put(`/assignments/${id}/suspend`),
 };
 
+export const SyncService = {
+    getActivity: () => apiClient.get('/sync/activity'),
+    push: (payload) => apiClient.post('/sync/push', payload),
+};
+
 export const DiscrepancyService = {
     getAll: () => apiClient.get('/discrepancies'),
     approve: (id) => apiClient.post(`/discrepancies/${id}/approve`),
@@ -42,12 +47,7 @@ export const DiscrepancyService = {
 
 export const DashboardService = {
     getMetrics: () => apiClient.get('/dashboard/metrics'),
-    getActivity: () => apiClient.get('/sync/activity'), // Changed to use focused distribution activity
-};
-
-export const SyncService = {
-    getActivity: () => apiClient.get('/sync/activity'),
-    push: (payload) => apiClient.post('/sync/push', payload),
+    getActivity: () => SyncService.getActivity(), // Reuse SyncService
 };
 
 export const UserService = {

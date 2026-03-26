@@ -8,6 +8,7 @@ import Discrepancies from './pages/Discrepancies';
 import AuditLogs from './pages/AuditLogs';
 import UserManagement from './pages/UserManagement';
 import Warehouse from './pages/Warehouse';
+import FieldActivity from './pages/FieldActivity';
 import './index.css';
 
 // RBAC Protected Route Component
@@ -43,6 +44,7 @@ const App = () => {
             <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
             <Route path="/discrepancies" element={<ProtectedRoute><Discrepancies /></ProtectedRoute>} />
             <Route path="/audits" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+            <Route path="/activity" element={<ProtectedRoute><FieldActivity /></ProtectedRoute>} />
 
             {/* Super Admin Only */}
             <Route path="/users" element={

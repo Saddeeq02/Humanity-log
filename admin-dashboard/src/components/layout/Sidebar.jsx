@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, AlertTriangle, FileText, Settings, LogOut, Users, PackageOpen } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, AlertTriangle, FileText, Settings, LogOut, Users, PackageOpen, Activity } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -17,6 +17,7 @@ const Sidebar = () => {
     const menuItems = [
         { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Assignments', path: '/assignments', icon: ClipboardList },
+        { name: 'Field Activity', path: '/activity', icon: Activity },
         { name: 'Approvals', path: '/discrepancies', icon: AlertTriangle },
         { name: 'Audit Logs', path: '/audits', icon: FileText },
     ];

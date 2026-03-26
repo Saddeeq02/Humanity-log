@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, Plus, MoreVertical, X, Loader2, MapPin, PackagePlus, Trash2, CheckCircle, AlertTriangle, ShieldAlert, Play } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, X, Loader2, MapPin, PackagePlus, Trash2, CheckCircle, AlertTriangle, ShieldAlert, Play, Eye } from 'lucide-react';
 import { AssignmentService, UserService, InventoryService } from '../services/api';
 import './Assignments.css';
 
@@ -494,6 +494,13 @@ const Assignments = () => {
                                                     <>
                                                         <button 
                                                             className="action-btn" 
+                                                            onClick={() => handleReviewMission(asn.id)}
+                                                            title="View Live Progress"
+                                                        >
+                                                            <Eye size={16} color="var(--primary-400)" />
+                                                        </button>
+                                                        <button 
+                                                            className="action-btn" 
                                                             onClick={() => handleSuspendAssignment(asn.id)}
                                                             title={asn.status === 'suspended' ? "Reactivate Mission" : "Suspend Mission"}
                                                         >
@@ -678,10 +685,12 @@ const Assignments = () => {
                             </div>
 
                             <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: '12px' }}>
-                                <button className="btn btn-glass" onClick={() => setReviewModalOpen(false)}>Cancel Review</button>
-                                <button className="btn btn-primary" onClick={() => handleCompleteMission(currentReport.id)}>
-                                    Finalize Audit & Close Mission
-                                </button>
+                                <button className="btn btn-glass" onClick={() => setReviewModalOpen(false)}>Close View</button>
+                                {currentReport.status === 'reconciling' && (
+                                    <button className="btn btn-primary" onClick={() => handleCompleteMission(currentReport.id)}>
+                                        Finalize Audit & Close Mission
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </div>

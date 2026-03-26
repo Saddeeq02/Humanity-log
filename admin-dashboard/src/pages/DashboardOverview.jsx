@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, AlertTriangle, CheckCircle, MapPin, Loader2 } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, MapPin, Loader2, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { DashboardService } from '../services/api';
 import './DashboardOverview.css';
 
 const DashboardOverview = () => {
+    const navigate = useNavigate();
     const [metrics, setMetrics] = useState(null);
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -125,7 +127,9 @@ const DashboardOverview = () => {
                         >
                             <div className="widget-header">
                                 <h3>Recent System Activity</h3>
-                                <button className="btn btn-glass btn-sm">View Archive</button>
+                                <button className="btn btn-glass btn-sm" onClick={() => navigate('/activity')}>
+                                    Full Feed <ArrowRight size={14} style={{ marginLeft: '4px' }} />
+                                </button>
                             </div>
                             <div className="feed-list">
                                 {activities.length === 0 ? (
