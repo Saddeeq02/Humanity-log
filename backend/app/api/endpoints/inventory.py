@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/all")
 async def get_all_inventory(db: AsyncSession = Depends(get_db)):
     """
-    Returns the master list of available humanitarian aid items in the warehouses.
+    Returns the master list of all humanitarian aid items, including suspended ones.
     """
     result = await db.execute(select(InventoryItem))
     items = result.scalars().all()
@@ -25,6 +25,25 @@ async def get_all_inventory(db: AsyncSession = Depends(get_db)):
                 "name": i.name,
                 "current_stock": i.total_quantity,
                 "is_active": i.is_active
+            } for i in items
+        ]
+    }
+
+@router.get("/active")
+async def get_active_inventory(db: AsyncSession = Depends(get_db)):
+    """
+    Returns only items that are active and available for dispatchment.
+    """
+    result = await db.execute(select(InventoryItem).where(InventoryItem.is_active == True))
+    items = result.scalars().all()
+    
+    return {
+        "status": "success",
+        "data": [
+            {
+                "id": str(i.id),
+                "name": i.name,
+                "current_stock": i.total_quantity
             } for i in items
         ]
     }

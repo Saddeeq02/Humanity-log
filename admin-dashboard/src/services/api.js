@@ -59,6 +59,7 @@ export const UserService = {
 
 export const InventoryService = {
     getAll: () => apiClient.get('/inventory/all'),
+    getActive: () => apiClient.get('/inventory/active'),
     create: (data) => apiClient.post('/inventory/', data),
     suspend: (id) => apiClient.put(`/inventory/${id}/suspend`),
     delete: (id) => apiClient.delete(`/inventory/${id}`)

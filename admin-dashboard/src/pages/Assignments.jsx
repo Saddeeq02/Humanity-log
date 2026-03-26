@@ -52,7 +52,7 @@ const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated, editingAssig
         try {
             const [agentsRes, invRes] = await Promise.all([
                 UserService.getAgents(),
-                InventoryService.getAll()
+                InventoryService.getActive()
             ]);
 
             if (agentsRes.data.status === 'success') {
