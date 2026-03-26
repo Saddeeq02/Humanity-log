@@ -191,7 +191,10 @@ async def pull_assignments(agent_id: str, db: AsyncSession = Depends(get_db)):
             {
                 "id": str(b.id),
                 "name": b.name,
-                "location": b.location
+                "age": b.age,
+                "location": b.location,
+                "photo_url": b.photo_url,
+                "biometrics": b.biometrics
             } for b in beneficiaries
         ]
     }

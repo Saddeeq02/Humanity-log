@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, AlertTriangle, CheckCircle, MapPin, Loader2, ArrowRight } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, MapPin, Loader2, ArrowRight, RefreshCw, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { DashboardService } from '../services/api';
@@ -10,28 +10,56 @@ const DashboardOverview = () => {
     const [metrics, setMetrics] = useState(null);
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncResponse, setSyncResponse] = useState(null);
+
+    const handleGlobalSync = async () => {
+        setIsSyncing(true);
+        setSyncResponse(null);
+        try {
+            const [metricsRes, activityRes] = await Promise.all([
+                DashboardService.getMetrics(),
+                DashboardService.getActivity()
+            ]);
+
+            if (metricsRes.data.status === 'success') {
+                setMetrics(metricsRes.data.data);
+            }
+            if (activityRes.data.status === 'success') {
+                setActivities(activityRes.data.data);
+            }
+            
+            setSyncResponse(`Pull Complete: ${activityRes.data.data.length} Missions Synced & Pushed to View.`);
+            setTimeout(() => setSyncResponse(null), 5000); // Clear after 5s
+        } catch (error) {
+            setSyncResponse("Pull Failed: System Unavailable");
+            setTimeout(() => setSyncResponse(null), 5000);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const fetchDashboardData = async () => {
+        try {
+            const [metricsRes, activityRes] = await Promise.all([
+                DashboardService.getMetrics(),
+                DashboardService.getActivity()
+            ]);
+
+            if (metricsRes.data.status === 'success') {
+                setMetrics(metricsRes.data.data);
+            }
+            if (activityRes.data.status === 'success') {
+                setActivities(activityRes.data.data);
+            }
+        } catch (error) {
+            console.error("Dashboard fetch error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                const [metricsRes, activityRes] = await Promise.all([
-                    DashboardService.getMetrics(),
-                    DashboardService.getActivity()
-                ]);
-
-                if (metricsRes.data.status === 'success') {
-                    setMetrics(metricsRes.data.data);
-                }
-                if (activityRes.data.status === 'success') {
-                    setActivities(activityRes.data.data);
-                }
-            } catch (error) {
-                console.error("Dashboard fetch error:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchDashboardData();
     }, []);
 
@@ -64,12 +92,33 @@ const DashboardOverview = () => {
 
     return (
         <div className="dashboard-container">
+            {syncResponse && (
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="sync-response-banner glass-panel"
+                >
+                    <Smartphone size={16} color="var(--success)" />
+                    <span>{syncResponse}</span>
+                </motion.div>
+            )}
+
             <div className="dashboard-header">
                 <div>
                     <h1>Operations Overview</h1>
                     <p className="subtitle">Real-time monitoring of all active field operations</p>
                 </div>
-                <button className="btn btn-primary">Generate Report</button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                        className={`btn btn-glass ${isSyncing ? 'loading' : ''}`}
+                        onClick={handleGlobalSync}
+                        disabled={isSyncing}
+                    >
+                        <RefreshCw size={18} className={isSyncing ? 'lucide-spin' : ''} />
+                        {isSyncing ? 'Pulling Data...' : 'Sync Operations'}
+                    </button>
+                    <button className="btn btn-primary" onClick={() => window.print()}>Generate Report</button>
+                </div>
             </div>
 
             {loading ? (

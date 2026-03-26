@@ -11,6 +11,17 @@ class BeneficiaryNotifier extends StateNotifier<List<Beneficiary>> {
   Future<void> setBeneficiaries(List<Beneficiary> beneficiaries) async {
     state = beneficiaries;
   }
+
+  List<Beneficiary> getUnsynced() {
+    return state.where((b) => !b.isSynced).toList();
+  }
+
+  void markAsSynced(List<String> ids) {
+    state = [
+      for (final b in state)
+        if (ids.contains(b.id)) b.copyWith(isSynced: true) else b,
+    ];
+  }
 }
 
 final beneficiaryProvider = StateNotifierProvider<BeneficiaryNotifier, List<Beneficiary>>((ref) {

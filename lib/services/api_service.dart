@@ -27,35 +27,24 @@ class ApiService {
     }
   }
 
-  Future<http.Response> pushSyncPayload({required String agentId, required List<DistributionLog> logs, required List<Beneficiary> newBeneficiaries}) async {
+  Future<http.Response> pushSyncPayload({
+    required String agentId, 
+    required List<DistributionLog> logs, 
+    required List<Beneficiary> newBeneficiaries
+  }) async {
     final url = Uri.parse('$baseUrl/api/v1/sync/push');
 
     final body = {
       'agent_id': agentId,
-      'logs': logs.map((l) => {
-        'id': l.id,
-        'assignment_id': l.assignmentId, 
-        'beneficiary_id': l.beneficiaryId,
-        'agent_id': agentId,
-        'timestamp': l.timestamp.toIso8601String(),
-        'location_coordinate': l.locationCoordinate ?? '',
-        'evidence': l.photoPath != null ? {
-          'id': l.id + '-evidence',
-          'photo_url': l.photoPath,
-          'gps_verification_status': 'unknown'
-        } : null
-      }).toList(),
-      'new_beneficiaries': newBeneficiaries.map((b) => {
-        'id': b.id,
-        'name': b.name,
-        'age': b.age,
-        'location': b.location,
-        'photo_url': b.photoUrl,
-        'biometrics': b.biometricHash
-      }).toList(),
+      'logs': logs.map((l) => l.toJson()).toList(),
+      'new_beneficiaries': newBeneficiaries.map((b) => b.toJson()).toList(),
     };
 
-    final response = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
+    final response = await http.post(
+      url, 
+      headers: {'Content-Type': 'application/json'}, 
+      body: jsonEncode(body)
+    );
     return response;
   }
 
@@ -67,15 +56,7 @@ class ApiService {
       final bens = <Beneficiary>[];
       if (data['beneficiaries'] != null) {
         for (var b in data['beneficiaries']) {
-          bens.add(Beneficiary(
-            id: b['id'],
-            name: b['name'] ?? '',
-            age: b['age'] ?? 0,
-            location: b['location'] ?? '',
-            gpsCoordinates: b['gps_coordinates'] ?? '',
-            photoUrl: b['photo_url'] ?? '',
-            biometricHash: b['biometric_hash'] ?? '',
-          ));
+          bens.add(Beneficiary.fromJson(b));
         }
       }
       return bens;
@@ -95,7 +76,10 @@ class ApiService {
     }
   }
 
-  Future<void> reconcileAssignment({required String assignmentId, required List<Map<String, dynamic>> returns}) async {
+  Future<void> reconcileAssignment({
+    required String assignmentId, 
+    required List<Map<String, dynamic>> returns
+  }) async {
     final url = Uri.parse('$baseUrl/api/v1/assignments/$assignmentId/reconcile');
     final response = await http.post(
       url,

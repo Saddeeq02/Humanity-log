@@ -5,44 +5,81 @@ import 'auth_provider.dart';
 import 'beneficiary_provider.dart';
 import 'inventory_provider.dart';
 
+class SyncSummary {
+  final int pushedRecords; // Total of logs + beneficiaries
+  final int pulledBeneficiaries;
+  final String status;
+
+  SyncSummary({
+    this.pushedRecords = 0,
+    this.pulledBeneficiaries = 0,
+    required this.status,
+  });
+}
+
 class NetworkNotifier extends StateNotifier<bool> {
-  final Ref ref;
-  NetworkNotifier(this.ref) : super(false); // Default offline
+  final Ref _ref;
+  NetworkNotifier(this._ref) : super(false); // Default offline
 
   void toggleNetwork() async {
     state = !state;
     if (state) {
-      await _triggerSync();
+      await manualSync();
     }
   }
 
-  Future<void> _triggerSync() async {
-    final distNotifier = ref.read(distributionProvider.notifier);
-    final unsynced = distNotifier.getUnsynced();
+  Future<SyncSummary> manualSync() async {
+    final distNotifier = _ref.read(distributionProvider.notifier);
+    final benNotifier = _ref.read(beneficiaryProvider.notifier);
     
-    final api = ref.read(apiServiceProvider);
-    final auth = ref.read(authProvider);
+    final unsyncedLogs = distNotifier.getUnsynced();
+    final unsyncedBens = benNotifier.getUnsynced();
+    
+    final api = _ref.read(apiServiceProvider);
+    final auth = _ref.read(authProvider);
     final agentId = auth.user?.id ?? 'agent-anonymous';
 
+    int pushedCount = 0;
+    int pulledCount = 0;
+
     try {
-      if (unsynced.isNotEmpty) {
-        final response = await api.pushSyncPayload(agentId: agentId, logs: unsynced, newBeneficiaries: []);
+      // 1. PUSH local unsynced data (Logs AND New Beneficiaries)
+      if (unsyncedLogs.isNotEmpty || unsyncedBens.isNotEmpty) {
+        final response = await api.pushSyncPayload(
+          agentId: agentId, 
+          logs: unsyncedLogs, 
+          newBeneficiaries: unsyncedBens
+        );
+        
         if (response.statusCode == 200) {
-          distNotifier.markAsSynced(unsynced.map((e) => e.id).toList());
+          distNotifier.markAsSynced(unsyncedLogs.map((e) => e.id).toList());
+          benNotifier.markAsSynced(unsyncedBens.map((e) => e.id).toList());
+          pushedCount = unsyncedLogs.length + unsyncedBens.length;
         }
       }
       
-      // Always pull fresh data during a sync if online
-      await pullBeneficiaries();
+      // 2. PULL remote updates
+      final beneficiaries = await api.pullBeneficiaries(agentId: agentId);
+      _ref.read(beneficiaryProvider.notifier).setBeneficiaries(beneficiaries);
+      pulledCount = beneficiaries.length;
+
+      // 3. FETCH current mission status
       await fetchAssignment();
+
+      return SyncSummary(
+        pushedRecords: pushedCount,
+        pulledBeneficiaries: pulledCount,
+        status: 'SUCCESS',
+      );
     } catch (e) {
       print('Sync error: $e');
+      return SyncSummary(status: 'ERROR');
     }
   }
 
   Future<void> fetchAssignment() async {
-    final api = ref.read(apiServiceProvider);
-    final auth = ref.read(authProvider);
+    final api = _ref.read(apiServiceProvider);
+    final auth = _ref.read(authProvider);
     final userId = auth.user?.id;
     
     if (userId == null) return;
@@ -51,16 +88,11 @@ class NetworkNotifier extends StateNotifier<bool> {
       final assignment = await api.getLatestAssignment(userId: userId);
       if (assignment != null) {
         final id = assignment['id'] as String?;
-        final total = assignment['total_assigned_items'] as int? ?? 0;
+        final items = assignment['items'] as List<dynamic>? ?? [];
         final statusStr = assignment['status'] as String? ?? 'pending';
         
-        InventoryStatus status = InventoryStatus.pending;
-        if (statusStr == 'accepted') status = InventoryStatus.accepted;
-        if (statusStr == 'reconciling') status = InventoryStatus.reconciling;
-        if (statusStr == 'completed') status = InventoryStatus.completed;
-
         if (id != null) {
-          ref.read(inventoryProvider.notifier).updateFromAssignment(id, total, status);
+          _ref.read(inventoryProvider.notifier).updateFromAssignment(id, items, statusStr);
         }
       }
     } catch (e) {
@@ -68,47 +100,28 @@ class NetworkNotifier extends StateNotifier<bool> {
     }
   }
 
-  Future<void> pullBeneficiaries() async {
-    final api = ref.read(apiServiceProvider);
-    final auth = ref.read(authProvider);
-    final agentId = auth.user?.id ?? 'agent-anonymous';
-    
-    try {
-      final beneficiaries = await api.pullBeneficiaries(agentId: agentId);
-      ref.read(beneficiaryProvider.notifier).setBeneficiaries(beneficiaries);
-    } catch (e) {
-      print('Pull error: $e');
-    }
-  }
-
   Future<void> initialSync() async {
     state = true; // Set online for initial sync
-    await _triggerSync();
+    await manualSync();
   }
 
   Future<void> reconcileMission() async {
-    final api = ref.read(apiServiceProvider);
-    final inventory = ref.read(inventoryProvider);
+    final api = _ref.read(apiServiceProvider);
+    final inventory = _ref.read(inventoryProvider);
     
     if (inventory.assignmentId == null) return;
 
     try {
-      // Map returns for the API
-      final List<Map<String, dynamic>> returns = [
-        {
-          'inventory_id': 'default_id', // In a multi-item system, we'd map correctly
-          'quantity': inventory.returned_quantity // I need to add this to DailyInventory model or use returnedAid
-        }
-      ];
+      final List<Map<String, dynamic>> returns = inventory.items.map((item) => {
+        'inventory_id': item.inventoryId,
+        'quantity': item.returned
+      }).toList();
 
       await api.reconcileAssignment(
         assignmentId: inventory.assignmentId!,
-        returns: [
-          {'inventory_id': 'kits_001', 'quantity': inventory.returnedAid} // Using hardcoded ID for now as per MVP
-        ],
+        returns: returns,
       );
       
-      // Refresh assignment status
       await fetchAssignment();
     } catch (e) {
       print('Reconcile error: $e');
@@ -123,5 +136,10 @@ final networkProvider = StateNotifierProvider<NetworkNotifier, bool>((ref) {
 
 final pendingSyncCountProvider = Provider<int>((ref) {
   final distributions = ref.watch(distributionProvider);
-  return distributions.where((log) => !log.isSynced).length;
+  final beneficiaries = ref.watch(beneficiaryProvider);
+  
+  final unsyncedLogs = distributions.where((log) => !log.isSynced).length;
+  final unsyncedBens = beneficiaries.where((ben) => !ben.isSynced).length;
+  
+  return unsyncedLogs + unsyncedBens;
 });

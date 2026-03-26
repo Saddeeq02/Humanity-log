@@ -254,10 +254,10 @@ async def get_assignment_report(id: str, db: AsyncSession = Depends(get_db)):
             "flags": len(discrepancies),
             "inventory": [
                 {
-                    "name": i.inventory_item.name if i.inventory_item else "Unknown",
+                    "name": i.inventory_item.name if (i.inventory_item and i.inventory_item.name) else "Generic Aid",
                     "assigned": i.quantity,
-                    "returned": i.returned_quantity,
-                    "distributed": i.quantity - i.returned_quantity
+                    "returned": i.returned_quantity or 0,
+                    "distributed": i.quantity - (i.returned_quantity or 0)
                 } for i in inv_items
             ]
         }

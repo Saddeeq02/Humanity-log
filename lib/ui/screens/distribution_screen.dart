@@ -10,6 +10,8 @@ import '../../models/beneficiary.dart';
 import '../../models/distribution_log.dart';
 import '../../providers/beneficiary_provider.dart';
 import '../../providers/distribution_provider.dart';
+import '../../providers/inventory_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../widgets/swipe_to_confirm.dart';
 import '../../core/theme.dart';
 
@@ -150,13 +152,13 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
       name: _nameController.text.trim(),
       age: int.parse(_ageController.text.trim()),
       location: _locationController.text.trim(),
-      gpsCoordinates: locationString,
       photoUrl: _capturedImage!.path,
     );
 
     final newLog = DistributionLog.create(
-      assignmentId: currentInventory.assignmentId, 
+      assignmentId: currentInventory.assignmentId ?? 'unknown', 
       beneficiaryId: finalizedBeneficiary.id, 
+      agentId: ref.read(authProvider).user?.id ?? 'unknown',
       aidType: _aidType,
       photoPath: _capturedImage!.path,
       locationCoordinate: locationString,

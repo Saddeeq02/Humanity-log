@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/beneficiary_provider.dart';
 import '../../providers/distribution_provider.dart';
+import '../../providers/sync_provider.dart';
 import '../../core/theme.dart';
 import 'report_screen.dart';
 import 'distribution_screen.dart';
@@ -12,10 +13,51 @@ import '../../providers/locale_provider.dart';
 class HomeTab extends ConsumerWidget {
   const HomeTab({super.key});
 
+  void _handleGlobalSync(BuildContext context, WidgetRef ref) async {
+    // Show a loading snackbar or dialog if needed
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Synchronizing logs & pulling updates...'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    final summary = await ref.read(networkProvider.notifier).manualSync();
+
+    if (summary.status == 'SUCCESS') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          backgroundColor: AppTheme.statusSuccess,
+          content: Row(
+            children: [
+              const Icon(Icons.sync, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Pull Complete: ${summary.pulledBeneficiaries} Beneficiaries Synced. Pushed ${summary.pushedRecords} records to system.',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sync Failed: Check network connection.'),
+          backgroundColor: AppTheme.statusError,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final beneficiaries = ref.watch(beneficiaryProvider);
     final distributions = ref.watch(distributionProvider);
+    final pendingSync = ref.watch(pendingSyncCountProvider);
     
     final today = DateTime.now();
     final todayCount = distributions.where((d) => 
@@ -29,14 +71,39 @@ class HomeTab extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Quick Actions',
-            style: GoogleFonts.outfit(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textCharcoal,
-            ),
-          ).animate().fadeIn(duration: 400.ms),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Operations Control',
+                style: GoogleFonts.outfit(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textCharcoal,
+                ),
+              ).animate().fadeIn(duration: 400.ms),
+              
+              Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.sync_rounded, color: AppTheme.primaryTeal, size: 32),
+                    onPressed: () => _handleGlobalSync(context, ref),
+                  ).animate(onPlay: (controller) => controller.repeat())
+                    .shimmer(delay: 2.seconds, duration: 1.5.seconds),
+                  if (pendingSync > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: Text('$pendingSync', style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           
           Row(
