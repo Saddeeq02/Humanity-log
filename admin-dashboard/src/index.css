@@ -29,6 +29,11 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
+  
+  /* Status Aliases for specialized components */
+  --status-success: var(--success);
+  --status-error: var(--danger);
+  --primary-400: #60a5fa;
 
   /* Typography */
   --font-sans: 'Outfit', sans-serif;
