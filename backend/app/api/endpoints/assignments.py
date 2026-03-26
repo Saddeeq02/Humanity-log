@@ -160,3 +160,154 @@ async def get_user_assignment(user_id: str, db: AsyncSession = Depends(get_db)):
             ]
         }
     }
+
+@router.put("/{id}")
+async def update_assignment(id: str, data: AssignmentCreateSchema, db: AsyncSession = Depends(get_db)):
+    """
+    Updates an existing assignment.
+    """
+    assignment = await db.get(Assignment, id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+        
+    assignment.user_id = data.user_id
+    assignment.status = data.status
+    assignment.address = data.address
+    assignment.latitude = data.latitude
+    assignment.longitude = data.longitude
+    assignment.duration_days = data.duration_days
+    assignment.radius_km = data.radius_km
+    
+    # Update allocations (simplified: clear and recreate)
+    # 1. Delete old allocations
+    from sqlalchemy import delete
+    await db.execute(delete(AssignmentInventory).where(AssignmentInventory.assignment_id == id))
+    
+    # 2. Add new ones
+    for item in data.allocated_items:
+        alloc = AssignmentInventory(
+            id=str(uuid.uuid4()),
+            assignment_id=id,
+            inventory_id=item.inventory_id,
+            quantity=item.quantity
+        )
+        db.add(alloc)
+
+    await db.commit()
+    return {"status": "success", "message": "Assignment updated successfully"}
+
+@router.delete("/{id}")
+async def delete_assignment(id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Deletes an assignment and its allocations.
+    """
+    assignment = await db.get(Assignment, id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+        
+    await db.delete(assignment)
+    await db.commit()
+    return {"status": "success", "message": "Assignment deleted permanently"}
+
+@router.get("/{id}/report")
+async def get_assignment_report(id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Generates a mission summary report for Admin review.
+    Aggregates distributions, beneficiary info, and location flags.
+    """
+    from app.models.distribution import DistributionLog, DiscrepancyLog
+    from app.models.beneficiary import Beneficiary
+
+    assignment = await db.get(Assignment, id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+        
+    # Fetch all distributions for this assignment
+    dist_query = select(DistributionLog).options(selectinload(DistributionLog.beneficiary)).where(DistributionLog.assignment_id == id)
+    dist_res = await db.execute(dist_query)
+    distributions = dist_res.scalars().all()
+    
+    # Fetch discrepancies (location flags)
+    disc_query = select(DiscrepancyLog).where(DiscrepancyLog.assignment_id == id)
+    disc_res = await db.execute(disc_query)
+    discrepancies = disc_res.scalars().all()
+    
+    # Inventory Summary
+    inv_query = select(AssignmentInventory).options(selectinload(AssignmentInventory.inventory_item)).where(AssignmentInventory.assignment_id == id)
+    inv_res = await db.execute(inv_query)
+    inv_items = inv_res.scalars().all()
+    
+    return {
+        "status": "success",
+        "data": {
+            "id": id,
+            "agent_id": str(assignment.user_id),
+            "status": assignment.status,
+            "beneficiary_count": len(distributions),
+            "beneficiaries": [
+                {
+                    "name": d.beneficiary.name,
+                    "timestamp": d.timestamp.isoformat(),
+                    "location": d.location_coordinate
+                } for d in distributions if d.beneficiary
+            ],
+            "flags": len(discrepancies),
+            "inventory": [
+                {
+                    "name": i.inventory_item.name if i.inventory_item else "Unknown",
+                    "assigned": i.quantity,
+                    "returned": i.returned_quantity,
+                    "distributed": i.quantity - i.returned_quantity
+                } for i in inv_items
+            ]
+        }
+    }
+
+@router.post("/{id}/complete")
+async def complete_assignment(id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Marks an assignment as completed and archives it.
+    """
+    from datetime import datetime
+    assignment = await db.get(Assignment, id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+        
+    assignment.status = "completed"
+    assignment.closed_at = datetime.utcnow()
+    await db.commit()
+    
+    return {"status": "success", "message": "Mission marked as completed and archived."}
+
+class ReconciliationItem(BaseModel):
+    inventory_id: str
+    quantity: int
+
+class ReconciliationSchema(BaseModel):
+    returns: List[ReconciliationItem]
+
+@router.post("/{id}/reconcile")
+async def reconcile_assignment(id: str, data: ReconciliationSchema, db: AsyncSession = Depends(get_db)):
+    """
+    Submits final inventory returns from the field agent.
+    Moves status to 'reconciling' for Admin final sign-off.
+    """
+    assignment = await db.get(Assignment, id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+        
+    # Update each returned quantity
+    for item in data.returns:
+        query = select(AssignmentInventory).where(
+            AssignmentInventory.assignment_id == id,
+            AssignmentInventory.inventory_id == item.inventory_id
+        )
+        res = await db.execute(query)
+        alloc = res.scalars().first()
+        if alloc:
+            alloc.returned_quantity = item.quantity
+            
+    assignment.status = "reconciling"
+    await db.commit()
+    
+    return {"status": "success", "message": "Mission reconciliation submitted for review."}

@@ -94,4 +94,16 @@ class ApiService {
       throw Exception('Failed to get assignment: ${response.statusCode}');
     }
   }
+
+  Future<void> reconcileAssignment({required String assignmentId, required List<Map<String, dynamic>> returns}) async {
+    final url = Uri.parse('$baseUrl/api/v1/assignments/$assignmentId/reconcile');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'returns': returns}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to reconcile mission: ${response.body}');
+    }
+  }
 }

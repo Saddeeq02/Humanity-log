@@ -52,8 +52,15 @@ class NetworkNotifier extends StateNotifier<bool> {
       if (assignment != null) {
         final id = assignment['id'] as String?;
         final total = assignment['total_assigned_items'] as int? ?? 0;
+        final statusStr = assignment['status'] as String? ?? 'pending';
+        
+        InventoryStatus status = InventoryStatus.pending;
+        if (statusStr == 'accepted') status = InventoryStatus.accepted;
+        if (statusStr == 'reconciling') status = InventoryStatus.reconciling;
+        if (statusStr == 'completed') status = InventoryStatus.completed;
+
         if (id != null) {
-          ref.read(inventoryProvider.notifier).updateFromAssignment(id, total);
+          ref.read(inventoryProvider.notifier).updateFromAssignment(id, total, status);
         }
       }
     } catch (e) {
@@ -77,6 +84,36 @@ class NetworkNotifier extends StateNotifier<bool> {
   Future<void> initialSync() async {
     state = true; // Set online for initial sync
     await _triggerSync();
+  }
+
+  Future<void> reconcileMission() async {
+    final api = ref.read(apiServiceProvider);
+    final inventory = ref.read(inventoryProvider);
+    
+    if (inventory.assignmentId == null) return;
+
+    try {
+      // Map returns for the API
+      final List<Map<String, dynamic>> returns = [
+        {
+          'inventory_id': 'default_id', // In a multi-item system, we'd map correctly
+          'quantity': inventory.returned_quantity // I need to add this to DailyInventory model or use returnedAid
+        }
+      ];
+
+      await api.reconcileAssignment(
+        assignmentId: inventory.assignmentId!,
+        returns: [
+          {'inventory_id': 'kits_001', 'quantity': inventory.returnedAid} // Using hardcoded ID for now as per MVP
+        ],
+      );
+      
+      // Refresh assignment status
+      await fetchAssignment();
+    } catch (e) {
+      print('Reconcile error: $e');
+      rethrow;
+    }
   }
 }
 

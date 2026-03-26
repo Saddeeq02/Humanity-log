@@ -28,6 +28,10 @@ export const AssignmentService = {
     getActive: () => apiClient.get('/assignments/active'),
     getById: (id) => apiClient.get(`/assignments/${id}`),
     create: (data) => apiClient.post('/assignments/', data),
+    update: (id, data) => apiClient.put(`/assignments/${id}`, data),
+    delete: (id) => apiClient.delete(`/assignments/${id}`),
+    getReport: (id) => apiClient.get(`/assignments/${id}/report`),
+    complete: (id) => apiClient.post(`/assignments/${id}/complete`),
 };
 
 export const DiscrepancyService = {

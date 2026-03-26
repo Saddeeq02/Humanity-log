@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, Plus, MoreVertical, X, Loader2, MapPin, PackagePlus } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, X, Loader2, MapPin, PackagePlus, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { AssignmentService, UserService, InventoryService } from '../services/api';
 import './Assignments.css';
 
-const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated }) => {
+const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated, editingAssignment = null }) => {
     const [agents, setAgents] = useState([]);
     const [inventory, setInventory] = useState([]);
     const [loadingAgents, setLoadingAgents] = useState(false);
@@ -24,16 +24,28 @@ const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated }) => {
     useEffect(() => {
         if (isOpen) {
             fetchInitialData();
-            // Reset state
-            setAddress('');
-            setLatitude(null);
-            setLongitude(null);
-            setDurationDays(1);
-            setRadiusKm(1.0);
-            setAllocatedItems([]);
-            setSelectedAgent('');
+            if (editingAssignment) {
+                // Populate Edit Mode
+                setAddress(editingAssignment.address || '');
+                setLatitude(editingAssignment.latitude || null);
+                setLongitude(editingAssignment.longitude || null);
+                setDurationDays(editingAssignment.duration_days || 1);
+                setRadiusKm(editingAssignment.radius_km || 1.0);
+                setSelectedAgent(editingAssignment.user_id || '');
+                // For allocated items, we might need a more complex fetch if they aren't in the base object
+                // But for now let's assume summary is enough or we fetch by ID
+            } else {
+                // Reset for Create Mode
+                setAddress('');
+                setLatitude(null);
+                setLongitude(null);
+                setDurationDays(1);
+                setRadiusKm(1.0);
+                setAllocatedItems([]);
+                setSelectedAgent('');
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, editingAssignment]);
 
     const fetchInitialData = async () => {
         setLoadingAgents(true);
@@ -110,9 +122,9 @@ const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated }) => {
 
         setIsSubmitting(true);
         try {
-            const res = await AssignmentService.create({
+            const payload = {
                 user_id: selectedAgent,
-                status: 'pending',
+                status: editingAssignment ? editingAssignment.status : 'pending',
                 geo_fence_polygon: 'radius-based',
                 address: address,
                 latitude: latitude,
@@ -120,14 +132,18 @@ const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated }) => {
                 duration_days: parseInt(durationDays),
                 radius_km: parseFloat(radiusKm),
                 allocated_items: cleanItems
-            });
+            };
+
+            const res = editingAssignment
+                ? await AssignmentService.update(editingAssignment.id, payload)
+                : await AssignmentService.create(payload);
 
             if (res.data.status === 'success') {
                 onAssignmentCreated();
                 onClose();
             }
         } catch (error) {
-            console.error("Failed to create assignment", error);
+            console.error("Failed to process assignment", error);
         } finally {
             setIsSubmitting(false);
         }
@@ -145,7 +161,7 @@ const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated }) => {
                         style={{ maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto' }}
                     >
                         <div className="modal-header">
-                            <h2>Create Smart Geo-Assignment</h2>
+                            <h2>{editingAssignment ? 'Edit Mission Parameters' : 'Create Smart Geo-Assignment'}</h2>
                             <button className="icon-btn" onClick={onClose}><X size={20} /></button>
                         </div>
 
@@ -277,7 +293,7 @@ const NewAssignmentModal = ({ isOpen, onClose, onAssignmentCreated }) => {
                             <div className="modal-actions" style={{ marginTop: '2rem' }}>
                                 <button type="button" className="btn btn-glass" onClick={onClose}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={isSubmitting || !selectedAgent || latitude === null}>
-                                    {isSubmitting ? <Loader2 size={16} className="lucide-spin" /> : 'Dispatch Assignment'}
+                                    {isSubmitting ? <Loader2 size={16} className="lucide-spin" /> : (editingAssignment ? 'Update Assignment' : 'Dispatch Assignment')}
                                 </button>
                             </div>
                         </form>
@@ -293,6 +309,12 @@ const Assignments = () => {
     const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingAssignment, setEditingAssignment] = useState(null);
+
+    // New state for Review & Close
+    const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    const [currentReport, setCurrentReport] = useState(null);
+    const [isCompleting, setIsCompleting] = useState(false);
 
     const fetchAssignments = async () => {
         setLoading(true);
@@ -312,6 +334,48 @@ const Assignments = () => {
         fetchAssignments();
     }, []);
 
+    const handleDeleteAssignment = async (id) => {
+        try {
+            const res = await AssignmentService.delete(id);
+            if (res.data.status === 'success') {
+                fetchAssignments();
+            }
+        } catch (error) {
+            console.error("Delete failed", error);
+            alert("Failed to delete assignment.");
+        }
+    };
+
+    const handleReviewMission = async (id) => {
+        try {
+            const res = await AssignmentService.getReport(id);
+            if (res.data.status === 'success') {
+                setCurrentReport(res.data.data);
+                setReviewModalOpen(true);
+            }
+        } catch (error) {
+            console.error("Fetch report failed", error);
+            alert("Failed to load mission report.");
+        }
+    };
+
+    const handleCompleteMission = async (id) => {
+        setIsCompleting(true);
+        try {
+            const res = await AssignmentService.complete(id);
+            if (res.data.status === 'success') {
+                setReviewModalOpen(false);
+                fetchAssignments();
+                alert("Mission successfully completed and archived.");
+            }
+        } catch (error) {
+            console.error("Completion failed", error);
+            alert("Failed to finalize mission.");
+        } finally {
+            setIsCompleting(false);
+        }
+    };
+
     const filteredAssignments = assignments.filter(asn =>
         asn.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (asn.address && asn.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -325,7 +389,7 @@ const Assignments = () => {
                     <h1>Assignments Management</h1>
                     <p className="subtitle">Track and assign inventory tasks to field agents with Geo-Verification</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+                <button className="btn btn-primary" onClick={() => { setEditingAssignment(null); setIsModalOpen(true); }}>
                     <Plus size={18} /> New Assignment
                 </button>
             </div>
@@ -333,6 +397,7 @@ const Assignments = () => {
             <NewAssignmentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
+                editingAssignment={editingAssignment}
                 onAssignmentCreated={() => fetchAssignments()}
             />
 
@@ -404,7 +469,31 @@ const Assignments = () => {
                                             </span>
                                         </td>
                                         <td>
-                                            <button className="action-btn"><MoreVertical size={18} /></button>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {asn.status === 'reconciling' ? (
+                                                    <button
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => handleReviewMission(asn.id)}
+                                                        style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                                    >
+                                                        Review & Close
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="action-btn"
+                                                        onClick={() => {
+                                                            if (window.confirm('Are you sure you want to delete this assignment?')) {
+                                                                handleDeleteAssignment(asn.id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 size={16} color="var(--status-error)" />
+                                                    </button>
+                                                )}
+                                                <button className="action-btn" onClick={() => { setEditingAssignment(asn); setIsModalOpen(true); }}>
+                                                    <MoreVertical size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -412,6 +501,96 @@ const Assignments = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mission Review Modal */}
+                {reviewModalOpen && currentReport && (
+                    <div className="modal-overlay">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="modal-content"
+                            style={{ maxWidth: '700px', width: '90%' }}
+                        >
+                            <div className="modal-header">
+                                <div>
+                                    <h2 className="modal-title">Mission Review & Closure</h2>
+                                    <p className="modal-subtitle">Assignment ID: {currentReport.id.split('-')[0]}...</p>
+                                </div>
+                                <button className="close-btn" onClick={() => setReviewModalOpen(false)}><X size={24} /></button>
+                            </div>
+
+                            <div className="modal-body">
+                                <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div className="metric-card-lite">
+                                        <span className="metric-label">Beneficiaries</span>
+                                        <span className="metric-value-small">{currentReport.beneficiary_count}</span>
+                                    </div>
+                                    <div className="metric-card-lite">
+                                        <span className="metric-label">Location Flags</span>
+                                        <span className="metric-value-small" style={{ color: currentReport.flags > 0 ? 'var(--status-error)' : 'var(--status-success)' }}>
+                                            {currentReport.flags}
+                                        </span>
+                                    </div>
+                                    <div className="metric-card-lite">
+                                        <span className="metric-label">Status</span>
+                                        <span className={`status-badge ${currentReport.status.toLowerCase()}`}>
+                                            {currentReport.status}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-100)' }}>Inventory Reconciliation</h3>
+                                <table className="data-table" style={{ marginBottom: '1.5rem' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>Item Name</th>
+                                            <th>Assigned</th>
+                                            <th>Distributed</th>
+                                            <th>Returned</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentReport.inventory.map((inv, idx) => (
+                                            <tr key={idx}>
+                                                <td>{inv.name}</td>
+                                                <td>{inv.assigned}</td>
+                                                <td style={{ color: 'var(--primary-500)', fontWeight: 'bold' }}>{inv.distributed}</td>
+                                                <td style={{ color: 'var(--accent-terracotta)', fontWeight: 'bold' }}>{inv.returned}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--text-100)' }}>Beneficiary Verification</h3>
+                                <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: '8px', padding: '1rem' }}>
+                                    {currentReport.beneficiaries.length === 0 ? (
+                                        <p style={{ textAlign: 'center', color: 'var(--text-300)' }}>No distributions recorded.</p>
+                                    ) : (
+                                        currentReport.beneficiaries.map((b, idx) => (
+                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                                <div>
+                                                    <p className="font-bold" style={{ fontSize: '0.9rem' }}>{b.name}</p>
+                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-300)' }}>{new Date(b.timestamp).toLocaleString()}</p>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <span className="status-pill verified" style={{ fontSize: '0.7rem' }}>Verified GPS</span>
+                                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-300)' }}>{b.location}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: '12px' }}>
+                                <button className="btn btn-glass" onClick={() => setReviewModalOpen(false)}>Cancel Review</button>
+                                <button className="btn btn-primary" onClick={() => handleCompleteMission(currentReport.id)}>
+                                    Confirm Reconciliation & Close Mission
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
 
                 {!loading && (
                     <div className="table-footer">

@@ -333,7 +333,91 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               ).animate().fadeIn(delay: 400.ms);
             }),
             
+          const SizedBox(height: 32),
+          
+          if (inventory.status != InventoryStatus.pending && inventory.status != InventoryStatus.reconciling && inventory.status != InventoryStatus.completed)
+            ElevatedButton(
+              onPressed: _showFinishConfirmation,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.textCharcoal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.flag_circle),
+                  const SizedBox(width: 12),
+                  Text('FINISH MISSION & RETURN STOCK', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ).animate().fadeIn(delay: 500.ms).moveY(begin: 20),
+
+          if (inventory.status == InventoryStatus.reconciling || inventory.status == InventoryStatus.completed)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.bgOffWhite,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.primaryTeal.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.pending_actions, size: 48, color: AppTheme.primaryTeal),
+                  const SizedBox(height: 12),
+                  Text(
+                    inventory.status == InventoryStatus.completed ? 'Mission Completed & Verified' : 'Mission Reconciling...',
+                    style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textCharcoal),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    inventory.status == InventoryStatus.completed 
+                      ? 'The NGO has verified all distributions and returns. This mission is archived.'
+                      : 'Waiting for NGO Admin to verify your reported distributions and returns.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(fontSize: 14, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 500.ms),
+            
           const SizedBox(height: 80), // Fab space
+        ],
+      ),
+    );
+  }
+
+  void _showFinishConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Finish Mission?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Text(
+          'This will submit your final report and returned stock counts to the NGO. You will not be able to log more distributions for this mission once submitted.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Go Back')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                // Show loading
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitting final report...')));
+                await ref.read(networkProvider.notifier).reconcileMission();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Mission reconciliation submitted successfully!'), backgroundColor: AppTheme.statusSuccess)
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to submit: $e'), backgroundColor: AppTheme.statusError)
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.textCharcoal, foregroundColor: Colors.white),
+            child: const Text('Confirm & Submit'),
+          ),
         ],
       ),
     );

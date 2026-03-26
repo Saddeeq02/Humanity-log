@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum InventoryStatus { pending, accepted, short, over }
+enum InventoryStatus { pending, accepted, short, over, reconciling, completed }
 
 class DailyInventory {
   final String? assignmentId; // Added to track current mission
@@ -37,8 +37,8 @@ class DailyInventory {
 class InventoryNotifier extends StateNotifier<DailyInventory> {
   InventoryNotifier() : super(DailyInventory());
 
-  void updateFromAssignment(String id, int totalAllocated) {
-    state = state.copyWith(assignmentId: id, assignedAid: totalAllocated);
+  void updateFromAssignment(String id, int totalAllocated, InventoryStatus status) {
+    state = state.copyWith(assignmentId: id, assignedAid: totalAllocated, status: status);
   }
 
   void acceptAll() {

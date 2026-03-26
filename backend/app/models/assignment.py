@@ -16,6 +16,7 @@ class Assignment(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    closed_at = Column(DateTime, nullable=True) # For mission archival
     duration_days = Column(Integer, default=1)
     radius_km = Column(Float, default=1.0) 
     
@@ -28,6 +29,7 @@ class AssignmentInventory(Base):
     assignment_id = Column(String, ForeignKey("assignments.id"), nullable=False)
     inventory_id = Column(String, ForeignKey("inventory_items.id"), nullable=False)
     quantity = Column(Integer, default=0)
+    returned_quantity = Column(Integer, default=0) # New field
     
     assignment = relationship("Assignment", back_populates="inventory_allocations")
     inventory_item = relationship("InventoryItem")
